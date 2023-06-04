@@ -2,15 +2,15 @@ html {
     font-size: 22px
 }
 body {
-    background-color: #333;
-    color: whitesmoke;
+    background-color: #fcf9e3;
+    color: rgb(0, 0, 0);
 }
 a {
-    color:aliceblue;
+    color:rgb(0, 0, 0);
 }
 a:visited {
-    color: lightgray;
+    color: rgb(0, 0, 0);
 }
 a:hover, a:active{
-    color: #eee;
+    color: #000000;
 }

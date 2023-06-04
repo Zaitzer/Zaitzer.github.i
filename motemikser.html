@@ -13,7 +13,77 @@
     <h1>MOTEMIKSER</h1>
     <hr>
     <p><a href="index.html">back to main page</a></p>
-    <p> Lorem ipsum dolor sit, amet consectetur adipisicing elit. Incidunt deleniti necessitatibus cum cumque cupiditate. Repellendus quo ut eos enim eveniet. Ipsam molestias nobis voluptate quaerat dolorem consequatur dolor necessitatibus a.</p>
     <hr>
+    <div id="board"></div>
 </body>
+
 </html>
+// Javascript
+<script type="text/javascript">
+  let board = []; //defines the board
+  const size = 5; //defines the board size
+  const colors = ['red', 'green', 'blue', 'yellow']; //initeates a list of colors
+
+  // Initialize the board
+  function initBoard() {
+    for(let i=0; i<size; i++) { //loops through the height?
+      board[i] = []; 
+      for(let j=0; j<size; j++) {
+        board[i][j] = colors[Math.floor(Math.random() * colors.length)];//loops through the 
+      }
+    }
+  }
+
+  // Render the board
+  function renderBoard() {
+    let boardHtml = '';
+    for(let i=0; i<size; i++) {
+      for(let j=0; j<size; j++) {
+        boardHtml += `<div style="width: 20px; height: 20px; display: inline-block; background: ${board[i][j]}; cursor: pointer;" onClick="removeTiles(${i}, ${j})"></div>`;
+      }
+      boardHtml += '<br>';
+    }
+    document.getElementById('board').innerHTML = boardHtml;
+  }
+
+  // Remove tiles and shift left
+  function removeTiles(i, j) {
+    let color = board[i][j];
+    if (color) {
+      dfs(i, j, color);
+      shiftBoard();
+      renderBoard();
+    }
+  }
+
+  // Depth first search for connected tiles
+  function dfs(i, j, color) {
+    if (i<0 || i>=size || j<0 || j>=size || board[i][j] !== color) return;
+    board[i][j] = null;
+    dfs(i-1, j, color);
+    dfs(i+1, j, color);
+    dfs(i, j-1, color);
+    dfs(i, j+1, color);
+  }
+
+  // Shift the board to the left
+  function shiftBoard() {
+    for(let j=0; j<size; j++) {
+      let stack = [];
+      for(let i=size-1; i>=0; i--) {
+        if (board[i][j]) {
+          stack.push(board[i][j]);
+          board[i][j] = null;
+        }
+      }
+      while(stack.length) {
+        board[size-stack.length][j] = stack.pop();
+      }
+    }
+  }
+
+  window.onload = function() {
+    initBoard();
+    renderBoard();
+  }
+</script>
