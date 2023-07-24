@@ -1,16 +1,26 @@
-html {
-    font-size: 22px
+* {
+  border: 1px solid red;
 }
+
 body {
-    background-color: #fcf9e3;
-    color: rgb(0, 0, 0);
+  display: grid;
+  grid-template: "logo header header"
+    "nav nav nav" 
+    "nav main main";
 }
-a {
-    color:rgb(0, 0, 0);
+
+nav {
+  grid-area: nav;
 }
-a:visited {
-    color: rgb(0, 0, 0);
+
+img {
+  grid-area: logo;
 }
-a:hover, a:active{
-    color: #000000;
+
+h1 {
+  grid-area: header;
+}
+
+p {
+  grid-area: main;
 }
