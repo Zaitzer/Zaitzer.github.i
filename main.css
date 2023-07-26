@@ -1,26 +1,45 @@
-* {
-  border: 1px solid red;
-}
+
 
 body {
   display: grid;
-  grid-template: "logo header header"
-    "nav nav nav" 
-    "nav main main";
+  /* syntax reminder
+  grid-template: row1 row2 / column1 column2; */
+  grid-template: 
+  "logo head" auto
+  "nav txt" 1fr / auto 2fr;
 }
 
 nav {
   grid-area: nav;
 }
 
+nav ul {
+  list-style: none;
+  padding: 0;
+}
+
+nav ul li details ul {
+  padding: 0 0 0 1em;
+  list-style: disc;
+}
+
+
 img {
+  max-width: 200px;
+  max-height: 200px;
+  width: 100%;
+  height: auto; /* maintain aspect ratio */
   grid-area: logo;
 }
 
-h1 {
-  grid-area: header;
+
+header {
+  /* center text*/
+  text-align: center;
+  grid-area: head;
 }
 
-p {
-  grid-area: main;
+#introText {
+  padding: 2% 5% 0% 0%; /* the order of paddings is top, left, right, bottom */ 
+  grid-area: txt;
 }
