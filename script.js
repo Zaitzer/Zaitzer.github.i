@@ -1,4 +1,94 @@
+// Define the navigation structure as an array of objects
+const navItems = [
+    {
+        title: "Mathematics",
+        dropdown: true,
+        links: [
+            { title: "Mathematics", url: "Math/Math.html" },
+            { title: "Equivelance of tangent space", url: "Math/tangentSpace.html" },
+            { title: "Fuzzy sets", url: "Math/fuzzy.html" }
+        ]
+    },
+    {
+        title: "Games",
+        dropdown: true,
+        links: [
+            { title: "Games", url: "Games/games.html" },
+            { title: "Pong", url: "Games/PongBuild/index.html" },
+            { title: "Motemikser", url: "Games/motemikser.html" }
+        ]
+    },
+    {
+        title: "About Me",
+        dropdown: false
+    }
+];
+
+function generateNavigation() {
+    // Create the main <nav> and <ul> elements
+    const nav = document.createElement('nav');
+    const ul = document.createElement('ul');
+
+    // Loop through each navigation item and create the necessary HTML
+    navItems.forEach(item => {
+        const li = document.createElement('li');
+
+        if (item.dropdown) {
+            // Create the dropdown structure
+            const div = document.createElement('div');
+            div.className = 'dropdown';
+            const button = document.createElement('button');
+            button.className = 'dropdown-trigger';
+            button.textContent = item.title;
+
+            const dropdownUl = document.createElement('ul');
+            dropdownUl.className = 'dropdown-content';
+
+            // Loop through the dropdown links and create <li> elements
+            item.links.forEach(link => {
+                const linkLi = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = link.url;
+                a.textContent = link.title;
+                linkLi.appendChild(a);
+                dropdownUl.appendChild(linkLi);
+            });
+
+            div.appendChild(button);
+            div.appendChild(dropdownUl);
+            li.appendChild(div);
+        } else {
+            // Create a simple button if there is no dropdown
+            const button = document.createElement('button');
+            button.className = 'nav-button';
+            button.textContent = item.title;
+            li.appendChild(button);
+        }
+
+        // Append the <li> element to the main <ul>
+        ul.appendChild(li);
+    });
+
+    // Append the <ul> to the <nav> element
+    nav.appendChild(ul);
+
+    // Append the <nav> to the document body or another specific element
+    document.body.appendChild(nav);
+}
+
+// Call the function to generate and append the navigation
+generateNavigation();
+
+
+
+
+
+
+
 let dropdownTriggers = document.querySelectorAll('.dropdown-trigger');
+
+
+
 
 dropdownTriggers.forEach(trigger => {
     let dropdownTimerOpen;
