@@ -29,7 +29,6 @@
             font-size: 16px;
             cursor: pointer;
         }
-        /* You can add additional styles here if needed */
     </style>
 </head>
 
@@ -38,11 +37,11 @@
     <button id="reloadButton" onclick="location.reload()">Reload</button>
     <div id="gameContainer"></div>
 
+</body>
 <script type="module">
 import { Game, GameObject, GameObjects } from './GameEngine.js';
 
-// Define Color object before using it
-const Color = { // This is game dependent
+const Color = {
     NONE: 0,
     RED: 1,
     GREEN: 2,
@@ -59,53 +58,11 @@ class Cell extends GameObject {
         this.cellSize = 40;
         this.width = this.cellSize;
         this.height = this.cellSize;
-
-        // Animation properties
-        this.currentX = this.col * this.cellSize;
-        this.currentY = this.row * this.cellSize;
-        this.targetX = this.currentX;
-        this.targetY = this.currentY;
-        this.isMoving = false;
     }
 
     setPosition(row, col) {
         this.row = row;
         this.col = col;
-        this.targetX = this.col * this.cellSize;
-        this.targetY = this.row * this.cellSize;
-        this.isMoving = true;
-    }
-
-    update(deltaTime) {
-        if (this.isMoving) {
-            // Calculate the distance to the target
-            const dx = this.targetX - this.currentX;
-            const dy = this.targetY - this.currentY;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // If already at target, stop moving
-            if (distance === 0) {
-                this.isMoving = false;
-            } else {
-                // Set the speed
-                const speed = 500; // pixels per second
-
-                // Calculate the maximum movement for this frame
-                const maxMove = speed * deltaTime;
-
-                if (distance <= maxMove) {
-                    // Reached or will pass the target position
-                    this.currentX = this.targetX;
-                    this.currentY = this.targetY;
-                    this.isMoving = false;
-                } else {
-                    // Move towards the target
-                    const ratio = maxMove / distance;
-                    this.currentX += dx * ratio;
-                    this.currentY += dy * ratio;
-                }
-            }
-        }
     }
 
     draw(context) {
@@ -125,22 +82,16 @@ class Cell extends GameObject {
             case Color.YELLOW:
                 context.fillStyle = 'yellow';
                 break;
-            // case Color.PURPLE:
-            //     context.fillStyle = 'purple';
-            //     break;
-            // case Color.ORANGE:
-            //     context.fillStyle = 'orange';
-            //     break;
         }
 
-        context.fillRect(this.currentX, this.currentY, this.cellSize, this.cellSize);
+        context.fillRect(this.col * this.cellSize, this.row * this.cellSize, this.cellSize, this.cellSize);
         context.strokeStyle = 'black';
-        context.strokeRect(this.currentX, this.currentY, this.cellSize, this.cellSize);
+        context.strokeRect(this.col * this.cellSize, this.row * this.cellSize, this.cellSize, this.cellSize);
     }
 
     containsPoint(x, y) {
-        return x >= this.currentX && x <= this.currentX + this.width &&
-               y >= this.currentY && y <= this.currentY + this.height;
+        return x >= this.col * this.cellSize && x <= (this.col + 1) * this.cellSize &&
+            y >= this.row * this.cellSize && y <= (this.row + 1) * this.cellSize;
     }
 
     onClick(x, y) {
@@ -150,18 +101,13 @@ class Cell extends GameObject {
     }
 }
 
-
 class Grid extends GameObject {
     constructor(game) {
         super();
-        this.game = game; // Reference to the game engine instance
+        this.game = game;
         this.cellSize = 40;
         this.numRows = Math.floor(game.canvas.height / this.cellSize);
         this.numCols = Math.floor(game.canvas.width / this.cellSize);
-        this.width = this.cellSize * this.numCols;
-        this.height = this.cellSize * this.numRows;
-        this.x = 0;
-        this.y = 0;
         this.grid = [];
         this.initGrid();
         this.hasBeenClicked = false;
@@ -176,7 +122,7 @@ class Grid extends GameObject {
                     i,
                     j
                 );
-                cell.parent = this; // Set parent reference
+                cell.parent = this;
                 this.grid[i][j] = cell;
             }
         }
@@ -190,28 +136,26 @@ class Grid extends GameObject {
         }
     }
 
-    update(deltaTime) {
+    update() {
         if (this.hasBeenClicked) {
             this.hasBeenClicked = false;
 
             // Apply gravity to make cells fall down in each column
             for (let i = 0; i < this.numCols; i++) {
                 let newCol = [];
-                // Collect all non-empty cells in the column
                 for (let j = 0; j < this.numRows; j++) {
                     if (this.grid[j][i].color !== Color.NONE) {
                         newCol.push(this.grid[j][i]);
                     }
                 }
-                // Fill the column from the bottom up
+
                 let row = this.numRows - 1;
                 for (let cell of newCol.reverse()) {
-                    // Use setPosition to animate movement
                     cell.setPosition(row, i);
                     this.grid[row][i] = cell;
                     row--;
                 }
-                // Fill the remaining cells at the top with empty cells
+
                 for (; row >= 0; row--) {
                     const emptyCell = new Cell(Color.NONE, row, i);
                     emptyCell.parent = this;
@@ -219,9 +163,8 @@ class Grid extends GameObject {
                 }
             }
 
-            // Check for completely empty columns and shift columns to the right
+            // Shift columns to the right if a column is empty
             for (let i = 0; i < this.numCols; i++) {
-                // Check if the current column is empty
                 let isEmptyColumn = true;
                 for (let j = 0; j < this.numRows; j++) {
                     if (this.grid[j][i].color !== Color.NONE) {
@@ -230,18 +173,15 @@ class Grid extends GameObject {
                     }
                 }
 
-                // If the column is empty, shift all columns to the left of it to the right
                 if (isEmptyColumn) {
                     for (let k = i; k > 0; k--) {
-                        // Shift the entire column to the right
                         for (let j = 0; j < this.numRows; j++) {
                             const cell = this.grid[j][k - 1];
-                            cell.setPosition(j, k); // Update position with animation
+                            cell.setPosition(j, k);
                             this.grid[j][k] = cell;
                         }
                     }
 
-                    // Fill the leftmost column with empty cells
                     for (let j = 0; j < this.numRows; j++) {
                         const emptyCell = new Cell(Color.NONE, j, 0);
                         emptyCell.parent = this;
@@ -250,31 +190,17 @@ class Grid extends GameObject {
                 }
             }
         }
-
-        // Update all cells
-        for (let i = 0; i < this.numRows; i++) {
-            for (let j = 0; j < this.numCols; j++) {
-                this.grid[i][j].update(deltaTime);
-            }
-        }
     }
 
     containsPoint(x, y) {
-        return x >= this.x && x <= this.x + this.width &&
-            y >= this.y && y <= this.y + this.height;
+        return x >= 0 && x <= this.numCols * this.cellSize &&
+            y >= 0 && y <= this.numRows * this.cellSize;
     }
 
     onClick(x, y) {
-        // Prevent clicks while cells are moving
-        if (this.isAnimating()) {
-            return;
-        }
-
         this.hasBeenClicked = true;
-
-        // Determine which cell was clicked and delegate the click
-        const col = Math.floor((x - this.x) / this.cellSize);
-        const row = Math.floor((y - this.y) / this.cellSize);
+        const col = Math.floor(x / this.cellSize);
+        const row = Math.floor(y / this.cellSize);
 
         if (row >= 0 && row < this.numRows && col >= 0 && col < this.numCols) {
             const cell = this.grid[row][col];
@@ -284,106 +210,43 @@ class Grid extends GameObject {
         }
     }
 
-    // Helper method to check if any cells are animating
-    isAnimating() {
-        for (let i = 0; i < this.numRows; i++) {
-            for (let j = 0; j < this.numCols; j++) {
-                if (this.grid[i][j].isMoving) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     cellClicked(cell) {
         console.log(`Clicked cell at row: ${cell.row}, col: ${cell.col}`);
-
-        // Find connected cells
         const connectedGroup = findConnectedCells(this.grid, cell.row, cell.col);
-        if (connectedGroup) {
-            console.log(`Connected cells: ${connectedGroup.cells.length}`);
-            // Remove connected cells
-            if (connectedGroup.cells.length > 1) {
-                for (const cellInfo of connectedGroup.cells) {
-                    const newCell = new Cell(Color.NONE, cellInfo.row, cellInfo.col);
-                    newCell.parent = this;
-                    this.grid[cellInfo.row][cellInfo.col] = newCell;
-                }
+        if (connectedGroup?.cells.length > 1) {
+            for (const { row, col } of connectedGroup.cells) {
+                this.grid[row][col] = new Cell(Color.NONE, row, col);
             }
         }
     }
 }
 
-// Function to find connected cells
 function findConnectedCells(grid, startRow, startCol) {
-    const numRows = grid.length;
-    const numCols = grid[0].length;
     const targetColor = grid[startRow][startCol]?.color;
-    if (targetColor === undefined || targetColor === Color.NONE) return null;
+    if (targetColor === Color.NONE) return null;
 
-    const connectedGroup = new ConnectedGroup(targetColor);
+    const connectedGroup = { cells: [] };
     const stack = [[startRow, startCol]];
-    const visited = Array.from({ length: numRows }, () =>
-        Array(numCols).fill(false)
-    );
+    const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-    const directions = [
-        [-1, 0], // Up
-        [1, 0],  // Down
-        [0, -1], // Left
-        [0, 1]   // Right
-    ];
-
-    while (stack.length > 0) {
+    while (stack.length) {
         const [row, col] = stack.pop();
-
-        // Check if out of bounds or already visited
-        if (row < 0 || row >= numRows || col < 0 || col >= numCols || visited[row][col]) {
-            continue;
-        }
-
-        const cell = grid[row][col];
-        if (cell && cell.color === targetColor) {
-            // Mark as visited and add to the connected group
-            visited[row][col] = true;
-            connectedGroup.addCell(row, col);
-
-            // Add neighboring cells to the stack
-            for (const [dRow, dCol] of directions) {
-                stack.push([row + dRow, col + dCol]);
-            }
+        if (grid[row][col]?.color === targetColor) {
+            connectedGroup.cells.push({ row, col });
+            grid[row][col].color = Color.NONE;
+            directions.forEach(([dr, dc]) => {
+                const newRow = row + dr, newCol = col + dc;
+                if (newRow >= 0 && newRow < grid.length && newCol >= 0 && newCol < grid[0].length) {
+                    stack.push([newRow, newCol]);
+                }
+            });
         }
     }
 
     return connectedGroup;
 }
 
-class ConnectedGroup {
-    constructor(color) {
-        this.color = color;
-        this.cells = [];
-    }
-
-    addCell(row, col) {
-        this.cells.push({ row, col });
-    }
-}
-
-function initializeGame(game) {
-    const grid = new Grid(game);
-    game.addGameObject(grid);
-}
-
-const gameOptions = {
-    width: 400,
-    height: 400,
-    parentElementId: 'gameContainer',
-};
-
-const game = new Game(gameOptions, initializeGame);
+const game = new Game({ width: 400, height: 400, parentElementId: 'gameContainer' }, game => game.addGameObject(new Grid(game)));
 game.start();
 </script>
-</body>
-
 </html>
