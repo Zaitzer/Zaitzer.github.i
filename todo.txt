@@ -1,0 +1,50 @@
+# TODO List
+
+## General
+- [ ] Refactor everything
+- [ ] More content for main page
+
+## Code
+- [ ] Optimize the dropdown menu functionality in script.js.
+- [ ] Add more games to the Games section in games.html.
+
+## Games
+- [ ] Complete the content for motemikser.html.
+- [ ] Remove PongBuild/index.html.
+- [ ] Add more games to the Games section in games.html.
+    - [ ] three in a row
+    - [ ] pacman
+    - [ ] tetris
+    - [ ] 2048
+    - [ ] snake
+    - [ ] battleship
+    - [ ] rock paper scissors, but its against AI
+
+## Refactoring Suggestions
+
+### HTML Files
+1. **index.html**:
+   - **Partitioning**: Consider separating the `<head>` and `<body>` content into different files if they grow larger.
+   - **Abstraction**: Use a templating system to manage repeated elements like headers and footers.
+
+2. **Games/games.html** and **Games/motemikser.html**:
+   - **Partitioning**: Create separate HTML files for each game and load them dynamically.
+   - **Abstraction**: Use a common template for game pages.
+
+3. **Math/fuzzy.html**, **Math/Math.html**, and **Math/tangentSpace.html**:
+   - **Partitioning**: Use a template for math-related pages.
+   - **Abstraction**: Abstract common elements like navigation and links.
+
+### CSS (main.css)
+- **Partitioning**: Separate styles into different files based on components or sections.
+- **Abstraction**: Use CSS variables for repeated styles.
+
+### JavaScript (script.js)
+- **Partitioning**: Break down large functions into smaller, reusable ones.
+- **Abstraction**: Use classes or modules to encapsulate related functionality.
+
+### General Recommendations
+- **Use of Frameworks**: Consider using a front-end framework like React or Vue.js.
+- **Code Comments**: Add comments to explain complex logic.
+- **Documentation**: Maintain a README to explain the structure and purpose of files.
+

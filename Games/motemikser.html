@@ -1,88 +1,389 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="author" content="Joakim Skar" />
-    <meta name="description" content="this is a game." />
-    <title>motemikser</title>
-    <link rel="icon" href="icon.png" type="image/x-icon" />
-    <link rel="stylesheet" href="main.css" type="text/css" />
-  </head>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Motemikser</title>
+    <style>
+        #background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #ffa2ef;
+        }
+
+        #gameContainer {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #reloadButton {
+            position: absolute;
+            top: 50%;
+            right: 30%;
+            padding: 5px 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        /* You can add additional styles here if needed */
+    </style>
+</head>
 
 <body>
-    <h1>MOTEMIKSER</h1>
-    <hr>
-    <p><a href="/index.html">back to main page</a></p>
-    <hr>
-    <div id="board"></div>
+    <div id="background"></div>
+    <button id="reloadButton" onclick="location.reload()">Reload</button>
+    <div id="gameContainer"></div>
+
+<script type="module">
+import { Game, GameObject, GameObjects } from './GameEngine.js';
+
+// Define Color object before using it
+const Color = { // This is game dependent
+    NONE: 0,
+    RED: 1,
+    GREEN: 2,
+    BLUE: 3,
+    YELLOW: 4,
+};
+
+class Cell extends GameObject {
+    constructor(color, row, col) {
+        super();
+        this.color = color;
+        this.row = row;
+        this.col = col;
+        this.cellSize = 40;
+        this.width = this.cellSize;
+        this.height = this.cellSize;
+
+        // Animation properties
+        this.currentX = this.col * this.cellSize;
+        this.currentY = this.row * this.cellSize;
+        this.targetX = this.currentX;
+        this.targetY = this.currentY;
+        this.isMoving = false;
+    }
+
+    setPosition(row, col) {
+        this.row = row;
+        this.col = col;
+        this.targetX = this.col * this.cellSize;
+        this.targetY = this.row * this.cellSize;
+        this.isMoving = true;
+    }
+
+    update(deltaTime) {
+        if (this.isMoving) {
+            // Calculate the distance to the target
+            const dx = this.targetX - this.currentX;
+            const dy = this.targetY - this.currentY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // If already at target, stop moving
+            if (distance === 0) {
+                this.isMoving = false;
+            } else {
+                // Set the speed
+                const speed = 500; // pixels per second
+
+                // Calculate the maximum movement for this frame
+                const maxMove = speed * deltaTime;
+
+                if (distance <= maxMove) {
+                    // Reached or will pass the target position
+                    this.currentX = this.targetX;
+                    this.currentY = this.targetY;
+                    this.isMoving = false;
+                } else {
+                    // Move towards the target
+                    const ratio = maxMove / distance;
+                    this.currentX += dx * ratio;
+                    this.currentY += dy * ratio;
+                }
+            }
+        }
+    }
+
+    draw(context) {
+        switch (this.color) {
+            case Color.NONE:
+                context.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                break;
+            case Color.RED:
+                context.fillStyle = 'red';
+                break;
+            case Color.GREEN:
+                context.fillStyle = 'green';
+                break;
+            case Color.BLUE:
+                context.fillStyle = 'blue';
+                break;
+            case Color.YELLOW:
+                context.fillStyle = 'yellow';
+                break;
+            // case Color.PURPLE:
+            //     context.fillStyle = 'purple';
+            //     break;
+            // case Color.ORANGE:
+            //     context.fillStyle = 'orange';
+            //     break;
+        }
+
+        context.fillRect(this.currentX, this.currentY, this.cellSize, this.cellSize);
+        context.strokeStyle = 'black';
+        context.strokeRect(this.currentX, this.currentY, this.cellSize, this.cellSize);
+    }
+
+    containsPoint(x, y) {
+        return x >= this.currentX && x <= this.currentX + this.width &&
+               y >= this.currentY && y <= this.currentY + this.height;
+    }
+
+    onClick(x, y) {
+        if (this.parent) {
+            this.parent.cellClicked(this);
+        }
+    }
+}
+
+
+class Grid extends GameObject {
+    constructor(game) {
+        super();
+        this.game = game; // Reference to the game engine instance
+        this.cellSize = 40;
+        this.numRows = Math.floor(game.canvas.height / this.cellSize);
+        this.numCols = Math.floor(game.canvas.width / this.cellSize);
+        this.width = this.cellSize * this.numCols;
+        this.height = this.cellSize * this.numRows;
+        this.x = 0;
+        this.y = 0;
+        this.grid = [];
+        this.initGrid();
+        this.hasBeenClicked = false;
+    }
+
+    initGrid() {
+        for (let i = 0; i < this.numRows; i++) {
+            this.grid[i] = [];
+            for (let j = 0; j < this.numCols; j++) {
+                const cell = new Cell(
+                    Math.floor(Math.random() * (Object.keys(Color).length - 1) + 1),
+                    i,
+                    j
+                );
+                cell.parent = this; // Set parent reference
+                this.grid[i][j] = cell;
+            }
+        }
+    }
+
+    draw(context) {
+        for (let i = 0; i < this.numRows; i++) {
+            for (let j = 0; j < this.numCols; j++) {
+                this.grid[i][j].draw(context);
+            }
+        }
+    }
+
+    update(deltaTime) {
+        if (this.hasBeenClicked) {
+            this.hasBeenClicked = false;
+
+            // Apply gravity to make cells fall down in each column
+            for (let i = 0; i < this.numCols; i++) {
+                let newCol = [];
+                // Collect all non-empty cells in the column
+                for (let j = 0; j < this.numRows; j++) {
+                    if (this.grid[j][i].color !== Color.NONE) {
+                        newCol.push(this.grid[j][i]);
+                    }
+                }
+                // Fill the column from the bottom up
+                let row = this.numRows - 1;
+                for (let cell of newCol.reverse()) {
+                    // Use setPosition to animate movement
+                    cell.setPosition(row, i);
+                    this.grid[row][i] = cell;
+                    row--;
+                }
+                // Fill the remaining cells at the top with empty cells
+                for (; row >= 0; row--) {
+                    const emptyCell = new Cell(Color.NONE, row, i);
+                    emptyCell.parent = this;
+                    this.grid[row][i] = emptyCell;
+                }
+            }
+
+            // Check for completely empty columns and shift columns to the right
+            for (let i = 0; i < this.numCols; i++) {
+                // Check if the current column is empty
+                let isEmptyColumn = true;
+                for (let j = 0; j < this.numRows; j++) {
+                    if (this.grid[j][i].color !== Color.NONE) {
+                        isEmptyColumn = false;
+                        break;
+                    }
+                }
+
+                // If the column is empty, shift all columns to the left of it to the right
+                if (isEmptyColumn) {
+                    for (let k = i; k > 0; k--) {
+                        // Shift the entire column to the right
+                        for (let j = 0; j < this.numRows; j++) {
+                            const cell = this.grid[j][k - 1];
+                            cell.setPosition(j, k); // Update position with animation
+                            this.grid[j][k] = cell;
+                        }
+                    }
+
+                    // Fill the leftmost column with empty cells
+                    for (let j = 0; j < this.numRows; j++) {
+                        const emptyCell = new Cell(Color.NONE, j, 0);
+                        emptyCell.parent = this;
+                        this.grid[j][0] = emptyCell;
+                    }
+                }
+            }
+        }
+
+        // Update all cells
+        for (let i = 0; i < this.numRows; i++) {
+            for (let j = 0; j < this.numCols; j++) {
+                this.grid[i][j].update(deltaTime);
+            }
+        }
+    }
+
+    containsPoint(x, y) {
+        return x >= this.x && x <= this.x + this.width &&
+            y >= this.y && y <= this.y + this.height;
+    }
+
+    onClick(x, y) {
+        // Prevent clicks while cells are moving
+        if (this.isAnimating()) {
+            return;
+        }
+
+        this.hasBeenClicked = true;
+
+        // Determine which cell was clicked and delegate the click
+        const col = Math.floor((x - this.x) / this.cellSize);
+        const row = Math.floor((y - this.y) / this.cellSize);
+
+        if (row >= 0 && row < this.numRows && col >= 0 && col < this.numCols) {
+            const cell = this.grid[row][col];
+            if (cell) {
+                cell.onClick(x, y);
+            }
+        }
+    }
+
+    // Helper method to check if any cells are animating
+    isAnimating() {
+        for (let i = 0; i < this.numRows; i++) {
+            for (let j = 0; j < this.numCols; j++) {
+                if (this.grid[i][j].isMoving) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    cellClicked(cell) {
+        console.log(`Clicked cell at row: ${cell.row}, col: ${cell.col}`);
+
+        // Find connected cells
+        const connectedGroup = findConnectedCells(this.grid, cell.row, cell.col);
+        if (connectedGroup) {
+            console.log(`Connected cells: ${connectedGroup.cells.length}`);
+            // Remove connected cells
+            if (connectedGroup.cells.length > 1) {
+                for (const cellInfo of connectedGroup.cells) {
+                    const newCell = new Cell(Color.NONE, cellInfo.row, cellInfo.col);
+                    newCell.parent = this;
+                    this.grid[cellInfo.row][cellInfo.col] = newCell;
+                }
+            }
+        }
+    }
+}
+
+// Function to find connected cells
+function findConnectedCells(grid, startRow, startCol) {
+    const numRows = grid.length;
+    const numCols = grid[0].length;
+    const targetColor = grid[startRow][startCol]?.color;
+    if (targetColor === undefined || targetColor === Color.NONE) return null;
+
+    const connectedGroup = new ConnectedGroup(targetColor);
+    const stack = [[startRow, startCol]];
+    const visited = Array.from({ length: numRows }, () =>
+        Array(numCols).fill(false)
+    );
+
+    const directions = [
+        [-1, 0], // Up
+        [1, 0],  // Down
+        [0, -1], // Left
+        [0, 1]   // Right
+    ];
+
+    while (stack.length > 0) {
+        const [row, col] = stack.pop();
+
+        // Check if out of bounds or already visited
+        if (row < 0 || row >= numRows || col < 0 || col >= numCols || visited[row][col]) {
+            continue;
+        }
+
+        const cell = grid[row][col];
+        if (cell && cell.color === targetColor) {
+            // Mark as visited and add to the connected group
+            visited[row][col] = true;
+            connectedGroup.addCell(row, col);
+
+            // Add neighboring cells to the stack
+            for (const [dRow, dCol] of directions) {
+                stack.push([row + dRow, col + dCol]);
+            }
+        }
+    }
+
+    return connectedGroup;
+}
+
+class ConnectedGroup {
+    constructor(color) {
+        this.color = color;
+        this.cells = [];
+    }
+
+    addCell(row, col) {
+        this.cells.push({ row, col });
+    }
+}
+
+function initializeGame(game) {
+    const grid = new Grid(game);
+    game.addGameObject(grid);
+}
+
+const gameOptions = {
+    width: 400,
+    height: 400,
+    parentElementId: 'gameContainer',
+};
+
+const game = new Game(gameOptions, initializeGame);
+game.start();
+</script>
 </body>
 
 </html>
-<script>
-  let board = []; //defines the board
-  const size = 5; //defines the board size
-  const colors = ['red', 'green', 'blue', 'yellow']; //initeates a list of colors
-
-  // Initialize the board
-  function initBoard() {
-    for(let i=0; i<size; i++) { //loops through the height?
-      board[i] = []; 
-      for(let j=0; j<size; j++) {
-        board[i][j] = colors[Math.floor(Math.random() * colors.length)];//loops through the 
-      }
-    }
-  }
-
-  // Render the board
-  function renderBoard() {
-    let boardHtml = '';
-    for(let i=0; i<size; i++) {
-      for(let j=0; j<size; j++) {
-        boardHtml += `<div style="width: 20px; height: 20px; display: inline-block; background: ${board[i][j]}; cursor: pointer;" onClick="removeTiles(${i}, ${j})"></div>`;
-      }
-      boardHtml += '<br>';
-    }
-    document.getElementById('board').innerHTML = boardHtml;
-  }
-
-  // Remove tiles and shift left
-  function removeTiles(i, j) {
-    let color = board[i][j];
-    if (color) {
-      dfs(i, j, color);
-      shiftBoard();
-      renderBoard();
-    }
-  }
-
-  // Depth first search for connected tiles
-  function dfs(i, j, color) {
-    if (i<0 || i>=size || j<0 || j>=size || board[i][j] !== color) return;
-    board[i][j] = null;
-    dfs(i-1, j, color);
-    dfs(i+1, j, color);
-    dfs(i, j-1, color);
-    dfs(i, j+1, color);
-  }
-
-  // Shift the board to the left
-  function shiftBoard() {
-    for(let j=0; j<size; j++) {
-      let stack = [];
-      for(let i=size-1; i>=0; i--) {
-        if (board[i][j]) {
-          stack.push(board[i][j]);
-          board[i][j] = null;
-        }
-      }
-      while(stack.length) {
-        board[size-stack.length][j] = stack.pop();
-      }
-    }
-  }
-
-  window.onload = function() {
-    initBoard();
-    renderBoard();
-  }
-</script>

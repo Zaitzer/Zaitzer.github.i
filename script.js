@@ -24,126 +24,128 @@ const navItems = [
     }
 ];
 
-function generateNavigation() {
-    // Create the main <nav> and <ul> elements
-    const nav = document.createElement('nav');
-    const ul = document.createElement('ul');
+// Class to handle navigation generation and dropdown functionality
+class Navigation {
+    constructor(navItems) {
+        this.navItems = navItems;
+    }
 
-    // Loop through each navigation item and create the necessary HTML
-    navItems.forEach(item => {
-        const li = document.createElement('li');
+    // Generate the navigation menu
+    generateNavigation() {
+        const nav = document.createElement('nav');
+        const ul = document.createElement('ul');
 
-        if (item.dropdown) {
-            // Create the dropdown structure
-            const div = document.createElement('div');
-            div.className = 'dropdown';
-            const button = document.createElement('button');
-            button.className = 'dropdown-trigger';
-            button.textContent = item.title;
+        this.navItems.forEach(item => {
+            const li = document.createElement('li');
 
-            const dropdownUl = document.createElement('ul');
-            dropdownUl.className = 'dropdown-content';
+            if (item.dropdown) {
+                const dropdown = this.createDropdown(item);
+                li.appendChild(dropdown);
+            } else {
+                const button = this.createButton(item.title);
+                li.appendChild(button);
+            }
 
-            // Loop through the dropdown links and create <li> elements
-            item.links.forEach(link => {
-                const linkLi = document.createElement('li');
-                const a = document.createElement('a');
-                a.href = link.url;
-                a.textContent = link.title;
-                linkLi.appendChild(a);
-                dropdownUl.appendChild(linkLi);
-            });
+            ul.appendChild(li);
+        });
 
-            div.appendChild(button);
-            div.appendChild(dropdownUl);
-            li.appendChild(div);
-        } else {
-            // Create a simple button if there is no dropdown
-            const button = document.createElement('button');
-            button.className = 'nav-button';
-            button.textContent = item.title;
-            li.appendChild(button);
-        }
+        nav.appendChild(ul);
+        document.body.appendChild(nav);
+    }
 
-        // Append the <li> element to the main <ul>
-        ul.appendChild(li);
-    });
+    // Create a dropdown menu for a navigation item
+    createDropdown(item) {
+        const div = document.createElement('div');
+        div.className = 'dropdown';
+        const button = this.createButton(item.title, 'dropdown-trigger');
 
-    // Append the <ul> to the <nav> element
-    nav.appendChild(ul);
+        const dropdownUl = document.createElement('ul');
+        dropdownUl.className = 'dropdown-content';
 
-    // Append the <nav> to the document body or another specific element
-    document.body.appendChild(nav);
+        item.links.forEach(link => {
+            const linkLi = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = link.url;
+            a.textContent = link.title;
+            linkLi.appendChild(a);
+            dropdownUl.appendChild(linkLi);
+        });
+
+        div.appendChild(button);
+        div.appendChild(dropdownUl);
+        return div;
+    }
+
+    // Create a button for a navigation item
+    createButton(title, className = 'nav-button') {
+        const button = document.createElement('button');
+        button.className = className;
+        button.textContent = title;
+        return button;
+    }
+
+    // Setup event listeners for dropdown functionality
+    setupDropdowns() {
+        const dropdownTriggers = document.querySelectorAll('.dropdown-trigger');
+
+        dropdownTriggers.forEach(trigger => {
+            const dropdownContent = trigger.nextElementSibling;
+            this.setupDropdownEvents(trigger, dropdownContent);
+        });
+    }
+
+    // Setup event listeners for a specific dropdown
+    setupDropdownEvents(trigger, dropdownContent) {
+        let dropdownTimerOpen, dropdownTimerClose;
+
+        const manageDropdownTimer = (action, callback, delay) => {
+            if (action === 'set') {
+                return setTimeout(callback, delay);
+            } else if (action === 'clear') {
+                clearTimeout(callback);
+            }
+        };
+
+        const toggleDropdownVisibility = (forceShow = null) => {
+            const isVisible = dropdownContent.style.display === 'block';
+            const shouldShow = forceShow !== null ? forceShow : !isVisible;
+
+            dropdownContent.style.display = shouldShow ? 'block' : 'none';
+            dropdownContent.style.opacity = shouldShow ? '1' : '0';
+            dropdownContent.style.visibility = shouldShow ? 'visible' : 'hidden';
+        };
+
+        trigger.addEventListener('mouseover', () => {
+            dropdownTimerOpen = manageDropdownTimer('set', () => toggleDropdownVisibility(true), 500);
+        });
+
+        trigger.addEventListener('mouseout', () => {
+            manageDropdownTimer('clear', dropdownTimerOpen);
+            dropdownTimerClose = manageDropdownTimer('set', () => toggleDropdownVisibility(false), 500);
+        });
+
+        dropdownContent.addEventListener('mouseover', () => {
+            manageDropdownTimer('clear', dropdownTimerClose);
+        });
+
+        dropdownContent.addEventListener('mouseout', () => {
+            dropdownTimerClose = manageDropdownTimer('set', () => toggleDropdownVisibility(false), 500);
+        });
+
+        trigger.addEventListener('click', () => {
+            toggleDropdownVisibility();
+        });
+
+        window.addEventListener('click', (event) => {
+            if (!trigger.contains(event.target) && !dropdownContent.contains(event.target)) {
+                toggleDropdownVisibility(false);
+            }
+        });
+    }
 }
 
-// Call the function to generate and append the navigation
-generateNavigation();
+// Initialize and setup navigation
+const navigation = new Navigation(navItems);
+navigation.generateNavigation();
+navigation.setupDropdowns();
 
-
-
-
-
-
-
-let dropdownTriggers = document.querySelectorAll('.dropdown-trigger');
-
-
-
-
-dropdownTriggers.forEach(trigger => {
-    let dropdownTimerOpen;
-    let dropdownTimerClose;
-
-    const dropdownContent = trigger.nextElementSibling;
-
-    // Open dropdown after 1s hover
-    trigger.addEventListener('mouseover', function() {
-        dropdownTimerOpen = setTimeout(function() {
-            dropdownContent.style.display = 'block';
-            dropdownContent.style.opacity = '1';
-            dropdownContent.style.visibility = 'visible';
-        }, 500);
-    });
-
-    // Handle mouse leaving the dropdown or its content
-    function handleMouseOut() {
-        clearTimeout(dropdownTimerOpen);
-
-        dropdownTimerClose = setTimeout(function() {
-            dropdownContent.style.display = 'none';
-            dropdownContent.style.opacity = '0';
-            dropdownContent.style.visibility = 'hidden';
-        }, 500);
-    }
-
-    // Handle mouse entering the dropdown or its content
-    function handleMouseIn() {
-        clearTimeout(dropdownTimerClose);
-    }
-
-    trigger.addEventListener('mouseout', handleMouseOut);
-    dropdownContent.addEventListener('mouseover', handleMouseIn);
-    dropdownContent.addEventListener('mouseout', handleMouseOut);
-
-    // Click functionality
-    trigger.addEventListener('click', function() {
-        if (dropdownContent.style.display === 'block') {
-            dropdownContent.style.display = 'none';
-            dropdownContent.style.opacity = '0';
-            dropdownContent.style.visibility = 'hidden';
-        } else {
-            dropdownContent.style.display = 'block';
-            dropdownContent.style.opacity = '1';
-            dropdownContent.style.visibility = 'visible';
-        }
-    });
-
-    // Close dropdown if clicked anywhere outside
-    window.addEventListener('click', function(event) {
-        if (!trigger.contains(event.target) && !dropdownContent.contains(event.target)) {
-            dropdownContent.style.display = 'none';
-            dropdownContent.style.opacity = '0';
-            dropdownContent.style.visibility = 'hidden';
-        }
-    });
-});
