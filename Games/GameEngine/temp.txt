@@ -1,0 +1,652 @@
+// Camera.js
+import { Vector2d } from "./Vector2d.js";
+import { Vector3d } from "./Vector3d.js";
+import { Logger } from "./Logger.js";
+
+export class Camera {
+    constructor(screenWidth = 800, screenHeight = 600) {
+        Logger.INFO("Creating Camera");
+        this.screenSize = new Vector2d(screenWidth, screenHeight); // Width and height of the screen
+        this.position = new Vector3d(0, 0, -1); // Game world coordinates
+        this.rotation = new Vector3d(0, 0, 0); // Rotation in degrees
+    }
+
+    move(dx, dy, dz) {
+        this.position = this.position.add(new Vector3d(dx, dy, dz));
+    }
+
+    rotate(dx, dy, dz) {
+        this.rotation = this.rotation.add(new Vector3d(dx, dy, dz));
+    }
+
+    setScreenSize(width, height) {
+        this.screenSize = new Vector2d(width, height);
+    }
+
+    transform(point) {
+        let translated = point.subtract(this.position);
+
+        const cosZ = Math.cos(-this.rotation.z * Math.PI / 180);
+        const sinZ = Math.sin(-this.rotation.z * Math.PI / 180);
+        const rotatedX = translated.x * cosZ - translated.y * sinZ;
+        const rotatedY = translated.x * sinZ + translated.y * cosZ;
+
+        return new Vector3d(rotatedX, rotatedY, translated.z);
+    }
+}
+// Game.js
+import { GameObjects } from './GameObjects.js';
+import { Logger } from './Logger.js';
+import { Camera } from './Camera.js';
+import { Viewport } from './Viewport.js';
+
+export class Game {
+    constructor(options = {}, initializeFunction) {
+        this.canvas = options.canvas || document.createElement('canvas');
+        this.canvas.id = options.canvasId || 'gameCanvas';
+        this.isRunning = true;
+        this.gameObjects = new GameObjects();
+        this.TARGET_ASPECT_RATIO = options.targetAspectRatio || 16 / 9;
+
+        if (options.parentElementId) {
+            const parent = document.getElementById(options.parentElementId);
+            if (parent) {
+                parent.appendChild(this.canvas);
+            } else {
+                Logger.PRINT(`Parent element with id "${options.parentElementId}" not found. Appending canvas to body.`);
+                document.body.appendChild(this.canvas);
+            }
+        } else {
+            document.body.appendChild(this.canvas);
+        }
+
+        this.viewport = new Viewport(this.canvas, this.TARGET_ASPECT_RATIO);
+        this.camera = new Camera(this.canvas.width, this.canvas.height);
+
+        if (initializeFunction) {
+            initializeFunction(this);
+        }
+
+        this.lastTime = performance.now();
+        this.setupEventListeners();
+    }
+
+    addGameObject(gameObject) {
+        this.gameObjects.add(gameObject);
+    }
+
+    start() {
+        this.gameLoop();
+    }
+
+    gameLoop() {
+        if (this.isRunning) {
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - this.lastTime) / 1000;
+            this.lastTime = currentTime;
+
+            this.update(deltaTime);
+            this.draw();
+            requestAnimationFrame(() => this.gameLoop());
+        }
+    }
+
+    update(deltaTime) {
+        this.gameObjects.update(deltaTime, this.canvas);
+    }
+
+    setupEventListeners() {
+        this.canvas.addEventListener('click', (event) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
+
+            this.gameObjects.handleClick(x, y);
+        });
+
+        window.addEventListener('keydown', (event) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                event.preventDefault();
+            }
+            this.gameObjects.handleKeyDown(event);
+        });
+
+        window.addEventListener('keyup', (event) => {
+            this.gameObjects.handleKeyUp(event);
+        });
+
+        this.canvas.addEventListener('mousemove', (event) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
+            this.gameObjects.handleMouseMove(x, y);
+        });
+    }
+
+    draw() {
+        this.viewport.drawGameObjects(this.gameObjects.objects, this.camera);
+    }
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Engine Testing Ground</title>
+    <style>
+        body {
+            background-color: #f0f0f0;
+        }
+        #gameCanvas {
+            border: 1px solid red;
+            position: absolute;
+            width: 90vw;
+            height: 90vh;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+</style>
+
+    </style>
+</head>
+<body>
+    <h1>Game Engine Testing Ground</h1>
+    <p>This is a testing ground for the game engine.</p>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
+
+// GameObject.js
+import { Vector3d } from "./Vector3d.js";
+import { Logger } from "./Logger.js";
+
+export class GameObject {
+    // Enums encapsulated within the class
+    static physicsMode = {
+        NONE: 0,   // Does not partake in physics
+        SIMPLE: 1, // Simple physics
+        STATIC: 2  // Static objects collide but do not move
+    };
+
+    static collisionBox = {
+        NONE: 0,
+        RECTANGLE: 1,
+        CIRCLE: 2
+    };
+
+    static clickableArea = {
+        NONE: 0,
+        RECTANGLE: 1
+    };
+
+    constructor() {
+        // Position and size for click detection
+        this.physicsMode = GameObject.physicsMode.NONE;
+        this.position = new Vector3d(0, 0, 0); // Game world coordinates
+        this.velocity = new Vector3d(0, 0, 0);
+        this.acceleration = new Vector3d(0, 0, 0);
+        this.collisionBox = GameObject.collisionBox.NONE;
+        this.clickableArea = GameObject.clickableArea.NONE;
+        this.size = new Vector3d(0, 0, 0); // Size of the object for collision detection
+        this.isDestroyed = false; // Flag to mark object for removal
+    }
+
+    draw(context) { }
+
+    update(deltaTime, canvas) {
+        if (this.physicsMode === GameObject.physicsMode.SIMPLE) {
+            // Update velocity with acceleration
+            this.velocity.x += this.acceleration.x * deltaTime;
+            this.velocity.y += this.acceleration.y * deltaTime;
+
+            // Update position with velocity
+            this.position.x += this.velocity.x * deltaTime;
+            this.position.y += this.velocity.y * deltaTime;
+        }
+    }
+
+
+    onClick(x, y) { }
+
+    containsPoint(x, y) {
+        switch (this.collisionBox) {
+            case GameObject.collisionBox.RECTANGLE:
+                return (
+                    x >= this.position.x &&
+                    x <= this.position.x + this.size.x &&
+                    y >= this.position.y &&
+                    y <= this.position.y + this.size.y
+                );
+            case GameObject.collisionBox.CIRCLE:
+                const dx = x - (this.position.x + this.size.x / 2);
+                const dy = y - (this.position.y + this.size.y / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const radius = this.size.x / 2; // Assuming size.x == size.y
+                return distance <= radius;
+            default:
+                return false;
+        }
+    }
+
+    // Event handlers
+    handleKeyDown(event) { }
+    handleKeyUp(event) { }
+    handleMouseMove(x, y) { }
+}
+
+// GameObjects.js
+import { Logger } from "./Logger.js";
+
+export class GameObjects {
+    constructor() {
+        Logger.INFO("Creating GameObjects");
+        this.objects = [];
+    }
+
+    add(gameObject) {
+        this.objects.push(gameObject);
+    }
+
+    remove(gameObject) {
+        this.objects = this.objects.filter(obj => obj !== gameObject);
+    }
+
+    update(deltaTime, canvas) {
+        for (let i = this.objects.length - 1; i >= 0; i--) {
+            const obj = this.objects[i];
+            obj.update(deltaTime, canvas);
+
+            // Remove object if marked for destruction
+            if (obj.isDestroyed) {
+                this.objects.splice(i, 1);
+            }
+        }
+    }
+
+
+    draw(context) {
+        for (const obj of this.objects) {
+            obj.draw(context);
+        }
+    }
+
+    handleClick(x, y) {
+        for (const obj of this.objects) {
+            if (obj.containsPoint && obj.containsPoint(x, y)) {
+                obj.onClick(x, y);
+            }
+        }
+    }
+
+    handleKeyDown(event) {
+        for (const obj of this.objects) {
+            if (obj.handleKeyDown) {
+                obj.handleKeyDown(event);
+            }
+        }
+    }
+
+    handleKeyUp(event) {
+        for (const obj of this.objects) {
+            if (obj.handleKeyUp) {
+                obj.handleKeyUp(event);
+            }
+        }
+    }
+
+    handleMouseMove(x, y) {
+        for (const obj of this.objects) {
+            if (obj.handleMouseMove) {
+                obj.handleMouseMove(x, y);
+            }
+        }
+    }
+}
+
+// Logger.js
+export const Logger = {
+    isOn: true,
+    levels: {
+        DEBUG: 0,
+        INFO: 1,
+        WARN: 2,
+        ERROR: 3
+    },
+    currentLevel: 0, // Set to DEBUG level by default
+
+    PRINT(message, level = 1) {
+        if (this.isOn && level >= this.currentLevel) {
+            const timestamp = "[" + new Date().toLocaleTimeString() + "] ";
+            const levelStr = {
+                [this.levels.DEBUG]: '[DEBUG] ',
+                [this.levels.INFO]: '[INFO] ',
+                [this.levels.WARN]: '[WARN] ',
+                [this.levels.ERROR]: '[ERROR] ',
+            }[level] || '';
+            const processedMessage = timestamp + levelStr + message;
+            console.log(processedMessage);
+        }
+    },
+
+    DEBUG(message) {
+        this.PRINT(message, this.levels.DEBUG);
+    },
+
+    INFO(message) {
+        this.PRINT(message, this.levels.INFO);
+    },
+
+    WARN(message) {
+        this.PRINT(message, this.levels.WARN);
+    },
+
+    ERROR(message) {
+        this.PRINT(message, this.levels.ERROR);
+    }
+};
+
+// main.js
+import { Game } from './Game.js';
+import { GameObject } from './GameObject.js';
+import { Vector3d } from './Vector3d.js';
+import { Logger } from './Logger.js';
+
+// Enable logging
+Logger.isOn = true;
+Logger.currentLevel = Logger.levels.DEBUG;
+class TestObject extends GameObject {
+    constructor() {
+        super();
+        this.position = new Vector3d(100, 100, 0);
+        this.size = new Vector3d(50, 50, 0);
+        this.collisionBox = GameObject.collisionBox.RECTANGLE;
+        this.clickableArea = GameObject.clickableArea.RECTANGLE;
+        this.speed = 100; // Pixels per second
+        this.keys = {};
+    }
+
+    draw(context) {
+        context.fillStyle = 'blue';
+        context.fillRect(this.position.x, this.position.y, this.size.x, this.size.y);
+    }
+
+    handleKeyDown(event) {
+        this.keys[event.key] = true;
+    }
+
+    handleKeyUp(event) {
+        this.keys[event.key] = false;
+    }
+
+    update(deltaTime) {
+        super.update(deltaTime);
+        if (this.keys['ArrowUp']) {
+            this.position.y -= this.speed * deltaTime;
+        }
+        if (this.keys['ArrowDown']) {
+            this.position.y += this.speed * deltaTime;
+        }
+        if (this.keys['ArrowLeft']) {
+            this.position.x -= this.speed * deltaTime;
+        }
+        if (this.keys['ArrowRight']) {
+            this.position.x += this.speed * deltaTime;
+        }
+    }
+}
+
+class MovingObject extends GameObject {
+    constructor() {
+        super();
+        this.position = new Vector3d(200, 200, 0);
+        this.size = new Vector3d(30, 30, 0);
+        this.collisionBox = GameObject.collisionBox.RECTANGLE;
+        this.physicsMode = GameObject.physicsMode.SIMPLE;
+        this.velocity = new Vector3d(50, 0, 0); // Move horizontally
+    }
+
+    draw(context) {
+        context.fillStyle = 'red';
+        context.fillRect(this.position.x, this.position.y, this.size.x, this.size.y);
+    }
+
+    update(deltaTime, canvas) {
+        super.update(deltaTime, canvas);
+        // Bounce off the edges
+        if (this.position.x <= 0 || this.position.x + this.size.x >= canvas.width) {
+            this.velocity.x = -this.velocity.x;
+        }
+    }
+
+}
+const TARGET_ASPECT_RATIO = 16 / 9;
+
+// Initialize the game
+const game = new Game({
+    canvas: document.getElementById('gameCanvas'),
+    targetAspectRatio: TARGET_ASPECT_RATIO
+}, (gameInstance) => {
+    // Create and add the test object
+    const testObject = new TestObject();
+    gameInstance.addGameObject(testObject);
+    
+    // In your initialization function
+    const movingObject = new MovingObject();
+    gameInstance.addGameObject(movingObject);
+});
+
+// Start the game loop
+game.start();
+
+// Vector2d.js
+export class Vector2d {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    add(other) {
+        return new Vector2d(this.x + other.x, this.y + other.y);
+    }
+
+    subtract(other) {
+        return new Vector2d(this.x - other.x, this.y - other.y);
+    }
+
+    multiply(scalar) {
+        return new Vector2d(this.x * scalar, this.y * scalar);
+    }
+
+    magnitude() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+
+    normalize() {
+        const magnitude = this.magnitude();
+        if (magnitude === 0) return new Vector2d(0, 0);
+        return new Vector2d(this.x / magnitude, this.y / magnitude);
+    }
+
+    dot(other) {
+        return this.x * other.x + this.y * other.y;
+    }
+
+    // Additional utility methods
+    clone() {
+        return new Vector2d(this.x, this.y);
+    }
+    distanceTo(other) {
+        const dx = this.x - other.x;
+        const dy = this.y - other.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    angleTo(other) {
+        const dx = other.x - this.x;
+        const dy = other.y - this.y;
+        return Math.atan2(dy, dx);
+    }
+    
+    lerp(other, t) {
+        return new Vector2d(
+            this.x + (other.x - this.x) * t,
+            this.y + (other.y - this.y) * t
+        );
+    }
+}
+
+// Vector3d.js
+export class Vector3d {
+    constructor(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
+    add(other) {
+        return new Vector3d(
+            this.x + other.x,
+            this.y + other.y,
+            this.z + other.z
+        );
+    }
+
+    subtract(other) {
+        return new Vector3d(
+            this.x - other.x,
+            this.y - other.y,
+            this.z - other.z
+        );
+    }
+
+    multiply(scalar) {
+        return new Vector3d(
+            this.x * scalar,
+            this.y * scalar,
+            this.z * scalar
+        );
+    }
+
+    magnitude() {
+        return Math.sqrt(
+            this.x * this.x +
+            this.y * this.y +
+            this.z * this.z
+        );
+    }
+
+    normalize() {
+        const magnitude = this.magnitude();
+        if (magnitude === 0) return new Vector3d(0, 0, 0);
+        return new Vector3d(
+            this.x / magnitude,
+            this.y / magnitude,
+            this.z / magnitude
+        );
+    }
+
+    dot(other) {
+        return (
+            this.x * other.x +
+            this.y * other.y +
+            this.z * other.z
+        );
+    }
+
+    // Cross product
+    cross(other) {
+        return new Vector3d(
+            this.y * other.z - this.z * other.y,
+            this.z * other.x - this.x * other.z,
+            this.x * other.y - this.y * other.x
+        );
+    }
+
+    // Additional utility methods
+    clone() {
+        return new Vector3d(this.x, this.y, this.z);
+    }
+
+    distanceTo(other) {
+        const dx = this.x - other.x;
+        const dy = this.y - other.y;
+        const dz = this.z - other.z;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    
+    angleTo(other) {
+        const dx = other.x - this.x;
+        const dy = other.y - this.y;
+        const dz = other.z - this.z;
+        return Math.atan2(Math.sqrt(dy * dy + dz * dz), dx);
+    }
+    
+    lerp(other, t) {
+        return new Vector3d(
+            this.x + (other.x - this.x) * t,
+            this.y + (other.y - this.y) * t,
+            this.z + (other.z - this.z) * t
+        );
+    }
+
+}
+
+import { Camera } from './Camera.js';
+
+export class Viewport {
+    constructor(canvas, targetAspectRatio = 16 / 9) {
+        this.canvas = canvas;
+        this.context = canvas.getContext('2d');
+        this.targetAspectRatio = targetAspectRatio;
+        this.adjustCanvasResolution();
+        window.addEventListener('resize', () => this.adjustCanvasResolution());
+    }
+
+    adjustCanvasResolution() {
+        const rect = this.canvas.getBoundingClientRect();
+        const screenAspectRatio = rect.width / rect.height;
+
+        let newWidth, newHeight;
+        if (screenAspectRatio > this.targetAspectRatio) {
+            newHeight = rect.height;
+            newWidth = newHeight * this.targetAspectRatio;
+        } else {
+            newWidth = rect.width;
+            newHeight = newWidth / this.targetAspectRatio;
+        }
+
+        this.canvas.width = newWidth;
+        this.canvas.height = newHeight;
+
+        const offsetX = (rect.width - newWidth) / 2;
+        const offsetY = (rect.height - newHeight) / 2;
+
+        this.canvas.style.marginTop = `${offsetY}px`;
+        this.canvas.style.marginLeft = `${offsetX}px`;
+        this.canvas.style.marginRight = `${offsetX}px`;
+        this.canvas.style.marginBottom = `${offsetY}px`;
+    }
+
+    clear() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    drawGameObjects(gameObjects, camera) {
+        this.clear();
+        this.context.save();
+        this.context.translate(-camera.position.x, -camera.position.y);
+        this.context.rotate(-camera.rotation.z * Math.PI / 180);
+
+        gameObjects.forEach(obj => {
+            const transformedPosition = camera.transform(obj.position);
+            this.context.fillStyle = obj.color || 'black';
+            this.context.fillRect(transformedPosition.x, transformedPosition.y, obj.size.x, obj.size.y);
+        });
+
+        this.context.restore();
+    }
+}

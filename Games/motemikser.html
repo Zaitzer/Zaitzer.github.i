@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>Motemikser</title>
     <style>
+        /* Background styles */
         #background {
             position: fixed;
             top: 0;
@@ -12,21 +13,29 @@
             width: 100vw;
             height: 100vh;
             background-color: #ffa2ef;
+            z-index: -1; /* Ensure it stays behind other elements */
         }
 
+        /* Centering the content */
+        #quickFix {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Centering the game container */
         #gameContainer {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
+            margin-top: 20px;
         }
 
+        /* Button styles */
         #reloadButton {
-            position: absolute;
-            top: 50%;
-            right: 30%;
-            padding: 5px 10px;
-            font-size: 16px;
+            width: 100px;
+            height: 50px;
             cursor: pointer;
         }
     </style>
@@ -34,9 +43,10 @@
 
 <body>
     <div id="background"></div>
-    <button id="reloadButton" onclick="location.reload()">Reload</button>
-    <div id="gameContainer"></div>
-
+    <div id="quickFix">
+        <button id="reloadButton" onclick="location.reload()">Reload</button>
+        <div id="gameContainer"></div>
+    </div>
 </body>
 <script type="module">
 import { Game, GameObject, GameObjects } from './GameEngine.js';
@@ -213,7 +223,10 @@ class Grid extends GameObject {
     cellClicked(cell) {
         console.log(`Clicked cell at row: ${cell.row}, col: ${cell.col}`);
         const connectedGroup = findConnectedCells(this.grid, cell.row, cell.col);
-        if (connectedGroup?.cells.length > 1) {
+        console.log(connectedGroup.cells.length);
+        console.log(connectedGroup.cells.length > 1);
+        if (connectedGroup && connectedGroup.cells.length > 1) {
+            console.log('Removing cells...');
             for (const { row, col } of connectedGroup.cells) {
                 this.grid[row][col] = new Cell(Color.NONE, row, col);
             }
@@ -223,17 +236,21 @@ class Grid extends GameObject {
 
 function findConnectedCells(grid, startRow, startCol) {
     const targetColor = grid[startRow][startCol]?.color;
-    if (targetColor === Color.NONE) return null;
+    if (targetColor === Color.NONE) return { cells: [] };
 
     const connectedGroup = { cells: [] };
     const stack = [[startRow, startCol]];
+    const visited = new Set();
     const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
     while (stack.length) {
         const [row, col] = stack.pop();
+        const key = `${row},${col}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+
         if (grid[row][col]?.color === targetColor) {
             connectedGroup.cells.push({ row, col });
-            grid[row][col].color = Color.NONE;
             directions.forEach(([dr, dc]) => {
                 const newRow = row + dr, newCol = col + dc;
                 if (newRow >= 0 && newRow < grid.length && newCol >= 0 && newCol < grid[0].length) {
@@ -246,7 +263,12 @@ function findConnectedCells(grid, startRow, startCol) {
     return connectedGroup;
 }
 
-const game = new Game({ width: 400, height: 400, parentElementId: 'gameContainer' }, game => game.addGameObject(new Grid(game)));
+const game = new Game({
+    width: 400,
+    height: 400,
+    parentElementId: 'gameContainer',
+}, game => game.addGameObject(new Grid(game)));
+
 game.start();
 </script>
 </html>
