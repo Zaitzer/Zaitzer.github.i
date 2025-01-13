@@ -1,53 +1,83 @@
 <!DOCTYPE html>
-<!-- https://www.youtube.com/watch?v=kUMe1FH4CHE&ab_channel=freeCodeCamp.org -->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="author"
-      content="Joakim Skar" />
-    <meta
-      name="description"
-      content="This is my personal website." />
+    <meta name="author" content="Joakim Skar" />
+    <meta name="description" content="This is my personal website." />
     <title>Joakim Skar</title>
-    <link
-      rel="icon"
-      href="img/icon.png"
-      type="image/x-icon" />
+    <link rel="icon" href="img/icon.png" type="image/x-icon" />
     <link
       rel="stylesheet"
       href="main.css"
       type="text/css"
-      title="sabaton is fun" />
+      title="sabaton is fun"
+    />
     <script
       type="text/javascript"
       async
-      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.1/es5/tex-mml-chtml.js"></script>
+      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.1/es5/tex-mml-chtml.js"
+    ></script>
   </head>
 
   <body>
-<section id="logo" class="header-section">
-  <img src="img/icon.png" alt="icon" class="logo-img">
-</section>
-<section id="header" class="header-section">
-</section>
-
-<div class="title" id="main-title">
-  <h1>Joakim Skar's silly shenanigans and serious businiss portfolio</h1>
-  <p>Welcome to my website! I'll write about my projects and other things I find interesting.</p>
-</div>
-<section id="introText" class="intro-text">
-  <p>I'm
-    <script>
-      document.write(Math.floor((Date.now() - new Date('1998-05-17').getTime()) / (60 * 60 * 24 * 365.25 * 1000)))
-    </script>
-    years old and reside in southern Norway.
-  I'm a mathematician, gaming enthusiast and software developer. I hold a bachelor's 
-  degree in mathematics from UiA and I'm currently working towards a master's degree.</p>
-  <p> I'm currently working as a software developer at <a href="https://www.virtex.no/" target="_blank">VIRTEX</a> </p>
-</section>
-
-<script src="script.js"></script>
-</body>
+    <section id="logo">
+      <img src="img/icon.png" alt="Minimalistic torus"/>
+    </section>
+    <section id="banner"></section>
+    <nav id="nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li>
+          <a href="/Math/Math.html">Math</a>
+          <ul>
+            <li><a href="/Math/tangentSpace.html">Tangent Space</a></li>
+            <li><a href="/Math/fuzzy.html">Fuzzy</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="/Games/games.html">Games</a>
+          <ul>
+            <li><a href="/Games/PongBuild/index.html">Pong</a></li>
+            <li><a href="/Games/motemikser.html">Motemikser</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+    <div id="main-title">
+      <h1>Joakim Skar</h1>
+      <p>Silly shenanigans and serious business portfolio</p>
+    </div>
+    <section id="content">
+      <section id="about">
+        <p>
+          I'm
+          <script>
+            document.write(
+              Math.floor(
+                (Date.now() - new Date("1998-05-17").getTime()) /
+                  (31557600000)
+              )
+            );
+          </script>
+          years old and reside in southern Norway. I'm a mathematician, gaming
+          enthusiast and software developer. I hold a bachelor's degree in
+          mathematics from UiA and I'm currently working towards a master's
+          degree. I'm currently working as a software developer at
+          <a href="https://www.virtex.no/" target="_blank">VIRTEX</a>.
+        </p>
+      </section>
+      <section id="livestreamView">
+          <img
+          src="img/underConstruction.png"
+          alt="under construction"
+          />
+      </section>
+    </section>
+    <footer id="footer" class="footer-section">
+      <ul>
+        <li><a href="mailto:joakim.skar@hotmail.com">Email</a></li>
+      </ul>
+    </footer>
+    <script src="Banner.js"></script>
+  </body>
 </html>
-
